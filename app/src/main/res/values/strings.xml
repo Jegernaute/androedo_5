@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Image Viewer</string>
+    <string name="title_image_viewer">Image Viewer</string>
+    <string name="filter_all">ALL</string>
+    <string name="filter_jpeg">JPEG</string>
+    <string name="filter_png">PNG</string>
+    <string name="filter_tiff">TIFF</string>
+    <string name="select_folder">Вибрати папку</string>
+    <string name="play">Play</string>
+    <string name="stop">Stop</string>
+    <string name="author">Автор</string>
+    <string name="image_counter">0/0</string>
+    <string name="next_img">Наступне</string>
+    <string name="prev_img">Минуле</string>
+</resources>

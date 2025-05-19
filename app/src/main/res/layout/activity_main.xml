@@ -1,0 +1,148 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@color/black"
+    >
+
+    <!-- Назва зверху -->
+    <TextView
+        android:id="@+id/title"
+        android:text="@string/app_name"
+        android:textSize="24sp"
+        android:gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"/>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+        <ImageView
+            android:id="@+id/image_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:scaleType="fitCenter"
+            android:background="@color/grey"/>
+
+        <!-- Ліва стрілка -->
+        <ImageButton
+            android:id="@+id/button_prev"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@android:color/transparent"
+            android:src="@drawable/arrow_back"
+            android:layout_gravity="start|center_vertical"
+            android:contentDescription="@string/prev_img"
+            android:tint="@android:color/black"/>
+
+        <!-- Права стрілка -->
+        <ImageButton
+            android:id="@+id/button_next"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@android:color/transparent"
+            android:src="@drawable/arrow_forward"
+            android:layout_gravity="end|center_vertical"
+            android:contentDescription="@string/next_img"
+            android:tint="@android:color/black"/>
+    </FrameLayout>
+
+    <!-- Фільтри -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp"
+        android:weightSum="4"
+        >
+        <Button
+            android:id="@+id/filter_all"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/light_green"
+            android:textColor="@color/black"
+            android:text="@string/filter_all"
+            android:layout_marginEnd="8dp"/>
+        <Button
+            android:id="@+id/filter_jpeg"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/light_green"
+            android:textColor="@color/black"
+            android:text="@string/filter_jpeg"
+            android:layout_marginEnd="8dp"/>
+        <Button
+            android:id="@+id/filter_png"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/light_green"
+            android:textColor="@color/black"
+            android:text="@string/filter_png"
+            android:layout_marginEnd="8dp"/>
+        <Button
+            android:id="@+id/filter_tiff"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/light_green"
+            android:textColor="@color/black"
+            android:text="@string/filter_tiff"/>
+    </LinearLayout>
+
+
+    <!-- Нижній блок: кнопки і індикатор -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp"
+        android:weightSum="4"
+        >
+
+        <Button
+            android:id="@+id/button_select_folder"
+            android:layout_width="0dp"
+            android:layout_height="54dp"
+            android:layout_weight="3"
+            android:backgroundTint="@color/light_green"
+            android:text="@string/select_folder"
+            android:textColor="@color/black"
+            android:layout_marginEnd="6dp"/>
+
+        <Button android:id="@+id/button_play_stop"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/black"
+            android:backgroundTint="@color/light_green"
+            android:text="@string/play"
+            android:layout_marginEnd="6dp"/>
+
+        <Button android:id="@+id/button_author"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/black"
+            android:backgroundTint="@color/light_green"
+            android:text="@string/author"
+            android:layout_marginEnd="6dp"/>
+
+        <TextView android:id="@+id/image_counter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/light_green"
+            android:text="@string/image_counter"
+            android:layout_marginStart="16dp" />
+    </LinearLayout>
+
+</LinearLayout>

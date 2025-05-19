@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@color/white"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content">
+
+    <TextView
+        android:id="@+id/info_filename"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Файл: "
+        android:textStyle="bold"
+        android:textSize="17sp"/>
+
+    <TextView
+        android:id="@+id/info_size"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Розмір: "
+        android:layout_marginTop="8dp"/>
+
+    <TextView
+        android:id="@+id/info_date"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Дата: "
+        android:layout_marginTop="8dp"/>
+
+    <!-- Опціонально: розмір у пікселях -->
+    <TextView
+        android:id="@+id/info_resolution"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Розмір (px): "
+        android:layout_marginTop="8dp"/>
+</LinearLayout>
