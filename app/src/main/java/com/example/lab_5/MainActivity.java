@@ -1,5 +1,6 @@
 package com.example.lab_5;
 
+// Імпорти стандартних Android-класів для роботи з UI, файловою системою, жестами, дозволами тощо
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -17,74 +18,95 @@ import android.database.Cursor;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+// Імпорти для підтримки роботи з ActivityResult API (робота з дозволами, вибір файлів)
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
+/**
+ * Головна активність програми — переглядач зображень із вибраних користувачем папок.
+ */
 public class MainActivity extends AppCompatActivity {
 
+    // Лаунчер для запиту дозволу на читання зовнішнього сховища (runtime permission)
     private ActivityResultLauncher<String> requestPermissionLauncher;
 
-    // Додаємо список для URI вибраних папок
+    // Список URI вибраних користувачем папок
     private ArrayList<Uri> selectedFolders = new ArrayList<>();
-    // Лаунчер для вибору папки
+
+    // Лаунчер для вибору папки через файловий менеджер
     private ActivityResultLauncher<Intent> folderPickerLauncher;
 
+    // Список відфільтрованих (поточно видимих) зображень
     private ArrayList<Uri> imagesList = new ArrayList<>();
 
+    // Індекс поточного зображення у imagesList
     private int currentImageIndex = 0;
 
-    private String currentFilter = "ALL"; // Значення: ALL, JPEG, PNG
-    private ArrayList<Uri> allImagesList = new ArrayList<>(); // Список усіх зображень
+    // Активний фільтр (ALL, JPEG, PNG)
+    private String currentFilter = "ALL";
 
+    // Список усіх знайдених зображень у вибраних папках (без фільтрації)
+    private ArrayList<Uri> allImagesList = new ArrayList<>();
 
+    // Детектор жестів для обробки свайпів і довгих натискань
     private GestureDetector gestureDetector;
 
+    // Чи активний режим автоперегляду (слайдшоу)
     private boolean isSlideshowActive = false;
+    // Handler для запуску слайдшоу з затримкою
     private android.os.Handler slideshowHandler = new android.os.Handler();
+    // Об’єкт, який виконує зміну зображень у слайдшоу
     private Runnable slideshowRunnable;
 
-
+    /**
+     * Точка входу при створенні активності. Тут відбувається вся ініціалізація UI і логіки.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
-
+        // Реєструємо лаунчер для запиту дозволу на читання файлів
         requestPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
                 isGranted -> {
                     if (isGranted) {
-                        // Дозвіл надано, можна працювати
+                        // Дозвіл надано — можна працювати з файлами
                         Toast.makeText(this, "Дозвіл надано", Toast.LENGTH_SHORT).show();
                     } else {
-                        // Відмова у дозволі — повідомлення і закрити додаток
+                        // Дозвіл не надано — попереджаємо користувача і закриваємо додаток
                         Toast.makeText(this, "Без дозволу програма не працюватиме", Toast.LENGTH_LONG).show();
                         finish();
                     }
                 }
         );
 
+        // Перевіряємо наявність дозволу і, якщо треба — запитуємо його
         checkStoragePermission();
 
-        // Ініціалізація лаунчера для вибору папки
+        // Реєструємо лаунчер для вибору папки
         folderPickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
+                    // Якщо вибір пройшов успішно та є дані
                     if (result.getResultCode() == RESULT_OK && result.getData() != null) {
                         Uri treeUri = result.getData().getData();
                         if (treeUri != null) {
+                            // Додаємо нову папку до списку вибраних
                             selectedFolders.add(treeUri);
                             Toast.makeText(this, "Папка додана!", Toast.LENGTH_SHORT).show();
 
+                            // Очищаємо попередні результати
                             imagesList.clear();
-                            allImagesList.clear(); // Очищаємо оригінальний список
+                            allImagesList.clear();
 
+                            // Для кожної вибраної папки шукаємо всі зображення
                             for (Uri folderUri : selectedFolders) {
                                 try {
+                                    // Отримуємо дочірні документи (файли) у цій папці
                                     Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
                                             folderUri, DocumentsContract.getTreeDocumentId(folderUri)
                                     );
@@ -98,14 +120,14 @@ public class MainActivity extends AppCompatActivity {
                                             String docId = cursor.getString(0);
                                             String name = cursor.getString(1);
                                             String mime = cursor.getString(2);
+                                            // Перевіряємо, що це зображення (по MIME або розширенню)
                                             if (mime != null && (mime.startsWith("image/") ||
                                                     name.toLowerCase().endsWith(".jpg") ||
                                                     name.toLowerCase().endsWith(".jpeg") ||
                                                     name.toLowerCase().endsWith(".png"))) {
                                                 Uri fileUri = DocumentsContract.buildDocumentUriUsingTree(folderUri, docId);
-                                                allImagesList.add(fileUri); // Додаємо в оригінальний список
-                                                filterImages(); // Оновлюємо список згідно поточного фільтра
-
+                                                allImagesList.add(fileUri); // Додаємо до повного списку
+                                                filterImages(); // Оновлюємо поточний список зображень згідно фільтра
                                             }
                                         }
                                         cursor.close();
@@ -115,29 +137,38 @@ public class MainActivity extends AppCompatActivity {
                                 }
                             }
 
+                            // Показуємо користувачу кількість знайдених зображень
                             Toast.makeText(this, "Знайдено " + imagesList.size() + " зображень", Toast.LENGTH_SHORT).show();
-                            showImageAtIndex(0);
+                            showImageAtIndex(0); // Відображаємо перше зображення
                         }
                     }
                 }
         );
+
+        // Кнопка для вибору нової папки через файловий менеджер
         findViewById(R.id.button_select_folder).setOnClickListener(v -> {
+            // Створюємо намір для вибору папки (ACTION_OPEN_DOCUMENT_TREE)
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            // Додаємо права на читання та збереження доступу до папки
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-            folderPickerLauncher.launch(intent);
+            folderPickerLauncher.launch(intent); // Запускаємо діалог вибору папки
         });
 
+// Кнопки для переходу до попереднього та наступного зображення
         ImageButton buttonPrev = findViewById(R.id.button_prev);
         ImageButton buttonNext = findViewById(R.id.button_next);
 
+// Обробник натискання кнопки "Назад"
         buttonPrev.setOnClickListener(v -> {
-            if (isSlideshowActive) stopSlideshow();
+            if (isSlideshowActive) stopSlideshow(); // Зупиняємо автоперегляд, якщо він активний
             if (!imagesList.isEmpty()) {
+                // Переходимо до попереднього зображення з урахуванням циклічності
                 int prevIndex = (currentImageIndex - 1 + imagesList.size()) % imagesList.size();
                 showImageAtIndex(prevIndex);
             }
         });
 
+// Обробник натискання кнопки "Вперед"
         buttonNext.setOnClickListener(v -> {
             if (isSlideshowActive) stopSlideshow();
             if (!imagesList.isEmpty()) {
@@ -146,29 +177,34 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+// Кнопки для фільтрації зображень за форматом
         Button filterAll = findViewById(R.id.filter_all);
         Button filterJpeg = findViewById(R.id.filter_jpeg);
         Button filterPng = findViewById(R.id.filter_png);
         Button filterTiff = findViewById(R.id.filter_tiff);
 
+// Фільтр: показати всі зображення (ALL)
         filterAll.setOnClickListener(v -> {
             if (isSlideshowActive) stopSlideshow();
             currentFilter = "ALL";
-            filterImages();
+            filterImages(); // Оновлюємо список
         });
 
+// Фільтр: показати тільки JPEG
         filterJpeg.setOnClickListener(v -> {
             if (isSlideshowActive) stopSlideshow();
             currentFilter = "JPEG";
             filterImages();
         });
 
+// Фільтр: показати тільки PNG
         filterPng.setOnClickListener(v -> {
             if (isSlideshowActive) stopSlideshow();
             currentFilter = "PNG";
             filterImages();
         });
 
+// Фільтр: TIFF (демонстраційна обробка — підтримка не реалізована)
         filterTiff.setOnClickListener(v -> {
             if (isSlideshowActive) stopSlideshow();
             boolean hasTiff = false;
@@ -186,26 +222,30 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+// Кнопка "Про автора" — відкриває інформаційний діалог
         Button buttonAuthor = findViewById(R.id.button_author);
         buttonAuthor.setOnClickListener(v -> showAuthorDialog());
 
+// Основне зображення для перегляду
         ImageView imageView = findViewById(R.id.image_view);
 
+// Налаштування жестів: свайп вліво/вправо, довге натискання
         gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
             private static final int SWIPE_THRESHOLD = 100;
             private static final int SWIPE_VELOCITY_THRESHOLD = 100;
 
             @Override
             public boolean onDown(MotionEvent e) {
-                return true;
+                return true; // Необхідно для коректної роботи жестів
             }
 
+            // Обробка швидкого свайпу (fling) для переходу між зображеннями
             @Override
             public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
                 if (isSlideshowActive) stopSlideshow();
                 float diffX = e2.getX() - e1.getX();
                 float diffY = e2.getY() - e1.getY();
-                if (Math.abs(diffX) > Math.abs(diffY)) {
+                if (Math.abs(diffX) > Math.abs(diffY)) { // Аналізуємо напрямок: горизонтальний свайп
                     if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
                         if (diffX > 0) {
                             // Свайп вправо — попереднє зображення
@@ -225,125 +265,153 @@ public class MainActivity extends AppCompatActivity {
                 }
                 return false;
             }
+
+            // Довге натискання — показати інформацію про зображення
             @Override
             public void onLongPress(MotionEvent e) {
                 showImageInfoDialog();
             }
         });
 
+
+        // Додаємо обробку дотиків до imageView: свайп або довге натискання
         imageView.setOnTouchListener((v, event) -> {
-            if (isSlideshowActive) stopSlideshow();
-            return gestureDetector.onTouchEvent(event);
+            if (isSlideshowActive) stopSlideshow(); // Зупиняємо автоперегляд при ручному жесті
+            return gestureDetector.onTouchEvent(event); // Передаємо подію детектору жестів
         });
 
+// Кнопка Play/Stop для автоперегляду (слайдшоу)
         Button buttonPlayStop = findViewById(R.id.button_play_stop);
-        updatePlayStopUI(); // одразу синхронізує стан інтерфейсу
+        updatePlayStopUI(); // Одразу оновлюємо інтерфейс відповідно до стану (play/stop)
 
+// Обробник натискання кнопки Play/Stop
         buttonPlayStop.setOnClickListener(v -> {
             if (!isSlideshowActive && !imagesList.isEmpty()) {
-                startSlideshow();
+                startSlideshow(); // Якщо слайдшоу не активне і є зображення — стартуємо
             } else {
-                stopSlideshow();
+                stopSlideshow(); // Інакше — зупиняємо слайдшоу
             }
         });
+}
+// Кінець onCreate()
 
+/**
+ * Відобразити зображення за індексом у списку, оновити лічильник
+ */
+        private void showImageAtIndex(int index) {
+            ImageView imageView = findViewById(R.id.image_view);
+            TextView imageCounter = findViewById(R.id.image_counter);
 
+            // Якщо список порожній — показуємо стандартну картинку та повідомлення
+            if (imagesList.isEmpty()) {
+                imageView.setImageResource(R.drawable.ic_launcher_foreground);
+                imageCounter.setText("0/0");
+                Toast.makeText(this, "Зображення не знайдені", Toast.LENGTH_SHORT).show();
+                currentImageIndex = 0;
+                return;
+            }
 
-    }
+            // Коректуємо індекс, якщо він виходить за межі
+            if (index < 0 || index >= imagesList.size()) {
+                index = 0;
+            }
+            currentImageIndex = index;
 
-    private void showImageAtIndex(int index) {
-        ImageView imageView = findViewById(R.id.image_view);
-        TextView imageCounter = findViewById(R.id.image_counter);
+            // Пробуємо відобразити зображення по URI, якщо не виходить — дефолтне зображення
+            try {
+                imageView.setImageURI(imagesList.get(index));
+            } catch (Exception e) {
+                imageView.setImageResource(R.drawable.ic_launcher_foreground);
+                Toast.makeText(this, "Не вдалося відкрити зображення", Toast.LENGTH_SHORT).show();
+            }
+            imageCounter.setText((index + 1) + "/" + imagesList.size()); // Оновлюємо лічильник
+        }
 
-
-        if (imagesList.isEmpty()) {
-            imageView.setImageResource(R.drawable.ic_launcher_foreground);
-            imageCounter.setText("0/0");
-            Toast.makeText(this, "Зображення не знайдені", Toast.LENGTH_SHORT).show();
+/**
+ * Фільтрація зображень згідно активного фільтра
+ */
+        private void filterImages() {
+            imagesList.clear();
+            for (Uri uri : allImagesList) {
+                String path = uri.toString().toLowerCase();
+                if (currentFilter.equals("ALL")
+                        || (currentFilter.equals("JPEG") && (path.endsWith(".jpg") || path.endsWith(".jpeg")))
+                        || (currentFilter.equals("PNG") && path.endsWith(".png"))) {
+                    imagesList.add(uri);
+                }
+            }
             currentImageIndex = 0;
-            return;
+            showImageAtIndex(currentImageIndex);
+            updatePlayStopUI(); // Оновлюємо стан кнопки Play/Stop
         }
 
-        if (index < 0 || index >= imagesList.size()) {
-            index = 0;
-        }
-        currentImageIndex = index;
+/**
+ * Перевіряємо дозвіл на читання зовнішнього сховища (враховуємо версію Android)
+ */
+        private void checkStoragePermission() {
+            String permission = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                    ? Manifest.permission.READ_MEDIA_IMAGES
+                    : Manifest.permission.READ_EXTERNAL_STORAGE;
 
-        try {
-            imageView.setImageURI(imagesList.get(index));
-        } catch (Exception e) {
-            imageView.setImageResource(R.drawable.ic_launcher_foreground); // або закоментуй
-            Toast.makeText(this, "Не вдалося відкрити зображення", Toast.LENGTH_SHORT).show();
-        }
-        imageCounter.setText((index + 1) + "/" + imagesList.size());
-    }
-
-    private void filterImages() {
-        imagesList.clear();
-        for (Uri uri : allImagesList) {
-            String path = uri.toString().toLowerCase();
-            if (currentFilter.equals("ALL")
-                    || (currentFilter.equals("JPEG") && (path.endsWith(".jpg") || path.endsWith(".jpeg")))
-                    || (currentFilter.equals("PNG") && path.endsWith(".png"))) {
-                imagesList.add(uri);
+            if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
+                // Дозвіл вже є — нічого не робимо
+            } else {
+                // Запитуємо дозвіл
+                requestPermissionLauncher.launch(permission);
             }
         }
-        currentImageIndex = 0;
-        showImageAtIndex(currentImageIndex);
-        updatePlayStopUI();
-    }
 
+/**
+ * Запуск автоперегляду (слайдшоу): через кожні 2 секунди змінюємо зображення
+ */
+        private void startSlideshow() {
+            if (imagesList.isEmpty()) return; // Якщо зображень немає — нічого не робимо
+            isSlideshowActive = true;
+            updatePlayStopUI();
+            Toast.makeText(this, "Автоперегляд увімкнено", Toast.LENGTH_SHORT).show();
 
-
-    private void checkStoragePermission() {
-        String permission = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                ? Manifest.permission.READ_MEDIA_IMAGES
-                : Manifest.permission.READ_EXTERNAL_STORAGE;
-
-        if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
-            // Дозвіл вже наданий, нічого не робимо
-        } else {
-            // Попросити дозвіл
-            requestPermissionLauncher.launch(permission);
+            slideshowRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    if (!isSlideshowActive) return;
+                    int nextIndex = (currentImageIndex + 1) % imagesList.size();
+                    showImageAtIndex(nextIndex);
+                    slideshowHandler.postDelayed(this, 2000); // Наступне зображення через 2 сек
+                }
+            };
+            slideshowHandler.postDelayed(slideshowRunnable, 2000);
         }
-    }
 
-    private void startSlideshow() {
-        if (imagesList.isEmpty()) return;
-        isSlideshowActive = true;
-        updatePlayStopUI();
-        Toast.makeText(this, "Автоперегляд увімкнено", Toast.LENGTH_SHORT).show();
+/**
+ * Зупинка автоперегляду (слайдшоу)
+ */
+        private void stopSlideshow() {
+            isSlideshowActive = false;
+            updatePlayStopUI();
+            slideshowHandler.removeCallbacks(slideshowRunnable);
+            Toast.makeText(this, "Автоперегляд вимкнено", Toast.LENGTH_SHORT).show();
+        }
 
-        slideshowRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (!isSlideshowActive) return;
-                int nextIndex = (currentImageIndex + 1) % imagesList.size();
-                showImageAtIndex(nextIndex);
-                slideshowHandler.postDelayed(this, 2000); // 2 секунд
-            }
-        };
-        slideshowHandler.postDelayed(slideshowRunnable, 2000);
-    }
 
-    private void stopSlideshow() {
-        isSlideshowActive = false;
-        updatePlayStopUI();
-        slideshowHandler.removeCallbacks(slideshowRunnable);
-        Toast.makeText(this, "Автоперегляд вимкнено", Toast.LENGTH_SHORT).show();
-    }
-
+    /**
+     * Оновлює вигляд і доступність кнопки Play/Stop відповідно до стану слайдшоу та наявності зображень
+     */
     private void updatePlayStopUI() {
         Button buttonPlayStop = findViewById(R.id.button_play_stop);
         if (isSlideshowActive) {
-            buttonPlayStop.setText("Stop"); // можна додати іконку ⏸️
+            buttonPlayStop.setText("Stop"); // Можна додати іконку «Пауза»
         } else {
-            buttonPlayStop.setText("Play"); // можна додати іконку ▶️
+            buttonPlayStop.setText("Play"); // Можна додати іконку «Старт»
         }
+        // Доступна тільки якщо є що показувати
         buttonPlayStop.setEnabled(!imagesList.isEmpty());
     }
 
+    /**
+     * Відображає діалогове вікно "Про автора"
+     */
     private void showAuthorDialog() {
+        // Створюємо вікно через AlertDialog
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
         android.view.LayoutInflater inflater = getLayoutInflater();
         android.view.View dialogView = inflater.inflate(R.layout.dialog_author, null);
@@ -352,36 +420,46 @@ public class MainActivity extends AppCompatActivity {
                 .setTitle("Про автора")
                 .setPositiveButton("OK", (dialog, which) -> dialog.dismiss());
 
-        // Можна додати тут налаштування, якщо потрібно (наприклад, змінити текст динамічно)
+        // Якщо потрібно, тут можна налаштувати текст у діалозі динамічно
         android.app.AlertDialog dialog = builder.create();
         dialog.show();
     }
 
+    /**
+     * Відображає інформацію про поточне зображення у діалоговому вікні:
+     * - Ім'я файлу
+     * - Розмір файлу
+     * - Дата модифікації
+     * - Роздільна здатність у пікселях
+     */
     private void showImageInfoDialog() {
+        // Якщо нема зображень — попереджаємо користувача
         if (imagesList.isEmpty()) {
             Toast.makeText(this, "Немає інформації про зображення", Toast.LENGTH_SHORT).show();
             return;
         }
+        // Отримуємо поточний URI зображення
         Uri imageUri = imagesList.get(currentImageIndex);
 
+        // Створюємо діалог через AlertDialog
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
         android.view.LayoutInflater inflater = getLayoutInflater();
         android.view.View dialogView = inflater.inflate(R.layout.dialog_image_info, null);
 
-        // Пошук елементів
+        // Пошук елементів у діалозі
         TextView filenameView = dialogView.findViewById(R.id.info_filename);
         TextView sizeView = dialogView.findViewById(R.id.info_size);
         TextView dateView = dialogView.findViewById(R.id.info_date);
         TextView resolutionView = dialogView.findViewById(R.id.info_resolution);
 
-        // Заповнення даних
+        // Стартові значення по замовчуванню
         String filename = "—";
         String size = "—";
         String date = "—";
         String resolution = "—";
 
         try {
-            // Отримуємо ім’я, розмір, дату, роздільну здатність через ContentResolver
+            // Отримуємо ім’я, розмір, дату через ContentResolver
             android.database.Cursor cursor = getContentResolver().query(
                     imageUri, null, null, null, null);
             if (cursor != null && cursor.moveToFirst()) {
@@ -395,7 +473,7 @@ public class MainActivity extends AppCompatActivity {
                     size = String.format("%.2f МБ", bytes / (1024.0 * 1024.0));
                 }
 
-                // Опціонально: отримаємо дату
+                // Опціонально: дата зміни файлу
                 int dateIndex = cursor.getColumnIndex(android.provider.MediaStore.MediaColumns.DATE_MODIFIED);
                 if (dateIndex >= 0) {
                     long timestamp = cursor.getLong(dateIndex) * 1000L;
@@ -405,7 +483,7 @@ public class MainActivity extends AppCompatActivity {
                 cursor.close();
             }
 
-            // Розмір у пікселях через BitmapFactory
+            // Витягуємо роздільну здатність зображення без завантаження у пам'ять
             android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
             options.inJustDecodeBounds = true;
             android.content.res.AssetFileDescriptor fd = getContentResolver().openAssetFileDescriptor(imageUri, "r");
@@ -415,9 +493,10 @@ public class MainActivity extends AppCompatActivity {
                 fd.close();
             }
         } catch (Exception e) {
-            // Якщо не вдалося — залишаємо “—”
+            // Якщо щось пішло не так — залишаємо дефолтні значення
         }
 
+        // Заповнюємо елементи у діалозі отриманими даними
         filenameView.setText("Файл: " + filename);
         sizeView.setText("Розмір: " + size);
         dateView.setText("Дата: " + date);
@@ -428,6 +507,5 @@ public class MainActivity extends AppCompatActivity {
                 .setPositiveButton("OK", (dialog, which) -> dialog.dismiss());
         builder.create().show();
     }
-
 
 }
